@@ -50,7 +50,7 @@ def renderTable(title: str, cols: list, arr: list):
 
 
 ##### HTTP Server Creation #####
-def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=False):
+def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=False, noColourMode=False):
     app = Flask(__name__)
 
     if not noServe:
@@ -61,7 +61,7 @@ def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=Fa
     @app.after_request
     def printHeaders(r):
         # Shoutout @Sam1ser for this one -- https://github.com/Samiser/pfp-colour-changer/blob/main/main.py
-        c = Console(style=f"rgb({','.join(str(round(i*255)) for i in colorsys.hsv_to_rgb(random.random(), 0.3, 0.95))})" if not accessibleMode else "", highlight=False)
+        c = Console(style=f"rgb({','.join(str(round(i*255)) for i in colorsys.hsv_to_rgb(random.random(), 0.3, 0.95))})" if not noColourMode else "", highlight=False)
         c.print(f"""{"=============================================" + chr(10) if debug and not accessibleMode else ""}{request.remote_addr} - - [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "{request.method} {request.path} {request.environ.get('SERVER_PROTOCOL')}" {r.status_code} -""")
         if debug:
             if not accessibleMode:
@@ -78,20 +78,30 @@ def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=Fa
 if __name__ == "__main__":
     # Arg Parsing
     parser = argparse.ArgumentParser(description="UP Simple HTTP server for debugging / hacking")
-    parser.add_argument("-d", "--directory", help="Directory to serve files from. Defaults to current working directory", default=os.getcwd())
-    parser.add_argument("--accessible", action="store_true", help="Disable colour printing and ASCII art")
     parser.add_argument("-v", "--verbose", help="Show request headers / information (you probably want this active)", action="store_true")
     parser.add_argument("-q", "--quiet", help="Don't show information on startup", action="store_true")
     parser.add_argument("-p", "--port", help="The port to serve on. Defaults to port 80", default=80)
-    parser.add_argument("--no-serve", help="Do not serve files", action="store_true")
+
+    dirGrp = parser.add_mutually_exclusive_group() # Directory arguments
+    dirGrp.add_argument("-d", "--directory", help="Directory to serve files from. Defaults to current working directory", default=os.getcwd())
+    dirGrp.add_argument("--no-serve", help="Do not serve files", action="store_true")
+
+
+    accessGrp = parser.add_mutually_exclusive_group() # Colour parsing -- if accessible is specified then they both must be, no point in allowing them both to be specified
+    accessGrp.add_argument("--accessible", action="store_true", help="Disable ASCII art (automatically adds --no-colour)")
+    accessGrp.add_argument("-c","--no-colour", action="store_true", help="Disable colour printing")
+
     args = parser.parse_args()
+
+    if args.accessible:
+        args.no_colour = True
 
 
     # Start app
     if not args.quiet:
         printInfo(args.directory, quiet=True, noServe=args.no_serve)
         print(f"Serving on port {args.port}")
-    app = createApp(debug=args.verbose, servDir=args.directory, accessibleMode=args.accessible, noServe=args.no_serve)
+    app = createApp(debug=args.verbose, servDir=args.directory, accessibleMode=args.accessible, noColourMode=args.no_colour, noServe=args.no_serve)
     threading.Thread(target=lambda: waitress.serve(app, port=args.port, host="0.0.0.0"), daemon=True).start() # Run the HTTP server in the background so that the enter-for-info works
     while True:
         try:
