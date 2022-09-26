@@ -5,6 +5,7 @@
 
 import argparse
 import os
+import json
 import sys
 import waitress
 import random
@@ -50,7 +51,17 @@ def renderTable(title: str, cols: list, arr: list):
     return t
 
 
-##### HTTP Server Creation #####
+##### HTTP Server #####
+def getBody():
+    if request.headers.get("Content-Type") == "application/json":
+        try:
+            data = request.json
+        except:
+            data = {}
+    else:
+        data = tuple([(k,v) for k,v in request.form.items()])
+    return data
+
 def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=False, noColourMode=False):
     app = Flask(__name__)
 
@@ -65,12 +76,24 @@ def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=Fa
         c = Console(style=f"rgb({','.join(str(round(i*255)) for i in colorsys.hsv_to_rgb(random.random(), 0.3, 0.95))})" if not noColourMode else "", highlight=False)
         c.print(f"""{"=============================================" + chr(10) if debug and not accessibleMode else ""}{request.remote_addr} - - [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "{request.method} {request.path} {request.environ.get('SERVER_PROTOCOL')}" {r.status_code} -""")
         if debug:
+            data = getBody()
             if not accessibleMode:
                 c.print(renderTable("", ["Header", "Value"], request.headers))
             else:
                 c.print("Headers:")
                 for i in request.headers:
                     c.print(f" {i[0]}: {i[1]}")
+
+            # Handle Data
+            if len(data) > 0:
+                c.print("[bold underline]Body:[/ bold underline]")
+                if type(data) == dict:
+                    c.print_json(data=data, highlight=(not noColourMode))
+                elif not accessibleMode:
+                    c.print(renderTable("", ["Key", "Value"], data))
+                else:
+                    for i in data:
+                        c.print(f" {i[0]}: {i[1]}")
         return r
     return app
 
