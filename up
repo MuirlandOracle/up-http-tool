@@ -41,7 +41,8 @@ def printInfo(directory=os.getcwd(), quiet=False, noServe=False):
         c.rule()
 
 def renderTable(title: str, cols: list, arr: list):
-    t = Table(title=title, show_lines=True)
+    #t = Table(title=title, show_lines=True)
+    t = Table(title=title)
     for i in cols:
         t.add_column(i)
     for i in arr:
