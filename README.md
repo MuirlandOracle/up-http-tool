@@ -10,19 +10,20 @@ This tool has a couple of advantages over the simple version:
 
 Help Menu:
 ```
-usage: up [-h] [-d DIRECTORY] [--accessible] [-v] [-q] [-p PORT] [--no-serve]
+usage: up [-h] [-v] [-q] [-p PORT] [-d DIRECTORY | --no-serve] [--accessible | -c]
 
 UP Simple HTTP server for debugging / hacking
 
 options:
   -h, --help            show this help message and exit
-  -d DIRECTORY, --directory DIRECTORY
-                        Directory to serve files from. Defaults to current working directory
-  --accessible          Disable colour printing and ASCII art
   -v, --verbose         Show request headers / information (you probably want this active)
   -q, --quiet           Don't show information on startup
   -p PORT, --port PORT  The port to serve on. Defaults to port 80
+  -d DIRECTORY, --directory DIRECTORY
+                        Directory to serve files from. Defaults to current working directory
   --no-serve            Do not serve files
+  --accessible          Disable ASCII art (automatically adds --no-colour)
+  -c, --no-colour       Disable colour printing
 ```
 
 ## Installation Instructions
@@ -37,4 +38,4 @@ EOF
 sudo chmod 555 /usr/local/bin/up
 ```
 
-Note, this has been tested on Linux... and that is it.
+Note, this has been tested on Kali Linux... and that is it. I developed this to make life easier when testing webapps / applications that might callback over HTTP -- you are more than welcome to make use of it yourself, but please don't expect full product support!
