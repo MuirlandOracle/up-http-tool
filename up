@@ -19,15 +19,16 @@ from flask import Flask, send_from_directory, request
 
 
 ##### Display Functions #####
-def printInfo(directory=os.getcwd(), quiet=False):
+def printInfo(directory=os.getcwd(), quiet=False, noServe=False):
     headerstyle = "\n[bold underline]{}[/bold underline]"
     c = Console(highlight=False)
     if not quiet:
         c.rule("Information")
-    c.print(headerstyle.format("Directory"))
-    c.print(directory)
-    c.print(headerstyle.format("Files"))
-    c.print(Columns(os.listdir(directory)))
+    if not noServe: # No point in printing this if we're not serving files
+        c.print(headerstyle.format("Directory"))
+        c.print(directory)
+        c.print(headerstyle.format("Files"))
+        c.print(Columns(os.listdir(directory)))
     c.print(headerstyle.format("Interfaces"))
     for i in netifaces.interfaces():
         interface = netifaces.ifaddresses(i).get(netifaces.AF_INET)
@@ -88,7 +89,7 @@ if __name__ == "__main__":
 
     # Start app
     if not args.quiet:
-        printInfo(args.directory, quiet=True)
+        printInfo(args.directory, quiet=True, noServe=args.no_serve)
         print(f"Serving on port {args.port}")
     app = createApp(debug=args.verbose, servDir=args.directory, accessibleMode=args.accessible, noServe=args.no_serve)
     threading.Thread(target=lambda: waitress.serve(app, port=args.port, host="0.0.0.0"), daemon=True).start() # Run the HTTP server in the background so that the enter-for-info works
@@ -97,4 +98,4 @@ if __name__ == "__main__":
             input()
         except KeyboardInterrupt:
             exit()
-        printInfo(args.directory, quiet=args.accessible)
+        printInfo(args.directory, quiet=args.accessible, noServe=args.no_serve)
