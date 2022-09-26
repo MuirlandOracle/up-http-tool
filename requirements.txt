@@ -1,0 +1,4 @@
+flask
+netifaces
+waitress
+rich
