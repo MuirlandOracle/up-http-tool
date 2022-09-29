@@ -38,4 +38,13 @@ EOF
 sudo chmod 555 /usr/local/bin/up
 ```
 
+## Simple Installation (not good practice, but if you like living on the edge... do this)
+```bash
+git clone https://github.com/MuirlandOracle/up-http-tool
+cd up-http-tool
+pip install -r requirements.txt
+cp up /usr/bin
+./up
+```
+
 Note, this has been tested on Kali Linux... and that is it. I developed this to make life easier when testing webapps / applications that might callback over HTTP -- you are more than welcome to make use of it yourself, but please don't expect full product support!
