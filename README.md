@@ -27,8 +27,12 @@ options:
 ```
 
 ## Installation Instructions
+
+### Venv Installation
+
 Literally just a Python script. Do something like this to install dependencies and add the script to your PATH:
 ```bash
+git clone https://github.com/MuirlandOracle/up-http-tool up && cd up
 python3 -m venv env
 ./env/bin/python -m pip install -r requirements.txt
 cat << EOF | sudo tee /usr/local/bin/up 2>&1 &>/dev/null
@@ -38,7 +42,7 @@ EOF
 sudo chmod 555 /usr/local/bin/up
 ```
 
-## Simple Installation (not good practice, but if you like living on the edge... do this)
+### Simple Installation (not good practice, but if you like living on the edge... do this)
 ```bash
 git clone https://github.com/MuirlandOracle/up-http-tool
 cd up-http-tool
