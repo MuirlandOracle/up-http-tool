@@ -38,7 +38,7 @@ EOF
 sudo chmod 555 /usr/local/bin/up
 ```
 
-## Simple Installation (without venv)
+## Simple Installation (not good practice, but if you like living on the edge... do this)
 ```bash
 git clone https://github.com/MuirlandOracle/up-http-tool
 cd up-http-tool
