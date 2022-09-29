@@ -45,7 +45,7 @@ def renderTable(title: str, cols: list, arr: list):
     #t = Table(title=title, show_lines=True)
     t = Table(title=title)
     for i in cols:
-        t.add_column(i)
+        t.add_column(i, overflow="fold")
     for i in arr:
         t.add_row(*i)
     return t
@@ -74,9 +74,8 @@ def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=Fa
     def printHeaders(r):
         # Shoutout @Sam1ser for this one -- https://github.com/Samiser/pfp-colour-changer/blob/main/main.py
         c = Console(style=f"rgb({','.join(str(round(i*255)) for i in colorsys.hsv_to_rgb(random.random(), 0.3, 0.95))})" if not noColourMode else "", highlight=False)
-        c.print(f"""{"=============================================" + chr(10) if debug and not accessibleMode else ""}{request.remote_addr} - - [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "{request.method} {request.path} {request.environ.get('SERVER_PROTOCOL')}" {r.status_code} -""")
+        c.print(f"""{"=============================================" + chr(10) if debug and not accessibleMode else ""}{request.remote_addr} - - [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "{request.method} {request.full_path} {request.environ.get('SERVER_PROTOCOL')}" {r.status_code} -""")
         if debug:
-            data = getBody()
             if not accessibleMode:
                 c.print(renderTable("", ["Header", "Value"], request.headers))
             else:
@@ -85,12 +84,24 @@ def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=Fa
                     c.print(f" {i[0]}: {i[1]}")
 
             # Handle Data
+            data = getBody()
             if len(data) > 0:
                 c.print("[bold underline]Body:[/ bold underline]")
                 if type(data) == dict:
                     c.print_json(data=data, highlight=(not noColourMode))
                 elif not accessibleMode:
                     c.print(renderTable("", ["Key", "Value"], data))
+                else:
+                    for i in data:
+                        c.print(f" {i[0]}: {i[1]}")
+
+
+            # Handle query parameters
+            args = tuple([(i,v) for i,v in request.args.items()])
+            if len(args) > 0:
+                c.print("[bold underline]Query Parameters:[/ bold underline]")
+                if not accessibleMode:
+                    c.print(renderTable("", ["Key", "Value"], args))
                 else:
                     for i in data:
                         c.print(f" {i[0]}: {i[1]}")

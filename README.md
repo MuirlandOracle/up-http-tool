@@ -4,7 +4,7 @@
 
 This tool has a couple of advantages over the simple version:
 * Optionally show request headers -- useful for debugging or if you're looking for connections back from a target webserver
-* Pretty colours to differentiate requests (can be disabled with `--accessible`)
+* Pretty colours to differentiate requests (can be disabled with `--accessible` or `-c`/`--no-colour`)
 * Disable file-sharing (this increases security if you're only wanting connection info -- will respond with 404 to every request)
 * Display information about the working environment (e.g. network addresses, current directory, files being served, etc) at start and whenever you press enter
 
