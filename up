@@ -65,10 +65,22 @@ def getBody():
 def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=False, noColourMode=False):
     app = Flask(__name__)
 
-    if not noServe:
-        @app.route('/<path:path>')
-        def sendFile(path):
+    # Handle GET requests 
+    @app.route("/", defaults={"path":""})
+    @app.route('/<path:path>')
+    def sendFile(path):
+        if not noServe:
             return send_from_directory(servDir, path)
+        else:
+            return ""
+            
+
+    # Handle all other request methods
+    @app.errorhandler(405)
+    def catchall(e):
+        return "Message Received", 200
+    
+
 
     @app.after_request
     def printHeaders(r):
