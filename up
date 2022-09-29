@@ -19,6 +19,10 @@ from datetime import datetime
 from flask import Flask, send_from_directory, request
 
 
+# Mutex to protect the console should multiple requests come in simultaneously
+mutex = threading.Lock()
+
+
 ##### Display Functions #####
 def printInfo(directory=os.getcwd(), quiet=False, noServe=False):
     headerstyle = "\n[bold underline]{}[/bold underline]"
@@ -84,6 +88,7 @@ def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=Fa
 
     @app.after_request
     def printHeaders(r):
+        mutex.acquire()
         # Shoutout @Sam1ser for this one -- https://github.com/Samiser/pfp-colour-changer/blob/main/main.py
         c = Console(style=f"rgb({','.join(str(round(i*255)) for i in colorsys.hsv_to_rgb(random.random(), 0.3, 0.95))})" if not noColourMode else "", highlight=False)
         c.print(f"""{"=============================================" + chr(10) if debug and not accessibleMode else ""}{request.remote_addr} - - [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "{request.method} {request.full_path.rstrip('?')} {request.environ.get('SERVER_PROTOCOL')}" {r.status_code} -""")
@@ -117,6 +122,7 @@ def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=Fa
                 else:
                     for i in args:
                         c.print(f" {i[0]}: {i[1]}")
+            mutex.release()
         return r
     return app
 
