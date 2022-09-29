@@ -115,7 +115,7 @@ def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=Fa
                 if not accessibleMode:
                     c.print(renderTable("", ["Key", "Value"], args))
                 else:
-                    for i in data:
+                    for i in args:
                         c.print(f" {i[0]}: {i[1]}")
         return r
     return app
