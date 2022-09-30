@@ -84,6 +84,15 @@ def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=Fa
     def catchall(e):
         return "Message Received", 200
     
+    # Remove CORS restrictions  -- let's be honest, we don't need 'em
+    @app.after_request
+    def killCors(r):
+        r.headers["Access-Control-Allow-Origin"] = request.referrer  or "*"
+        r.headers["Access-Control-Allow-Method"] = "*"
+        r.headers["Access-Control-Allow-Credentials"] = "true"
+        r.headers["Access-Control-Expose-Headers"] = "*"
+        r.headers["Access-Control-Allow-Headers"] = "*"
+        return r
 
 
     @app.after_request
