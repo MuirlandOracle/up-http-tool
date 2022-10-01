@@ -22,8 +22,24 @@ from flask import Flask, send_from_directory, request
 
 ##### Network Interface Interaction #####
 class Interfaces():
+    """Network Interfaces Class
+    Wrapper around netifaces library to obtain all IP addresses assigned to interfaces on the system and store these for easy processing.
+    
+    Attributes:
+    - workingIP: string
+        - The current IP address stored in the object. Defaults to 0.0.0.0
+    - interfaces: dict
+        - A dictionary containing interfaces to addresses
+        - e.g.: {"eth0":["192.168.0.1","192.168.0.2"]}
+        - Interfaces are unlikely to have more than one address, but the functionality to handle it is there
+    - addresses: dict
+        - Quick lookup dictionary containing addresses to interfaces
+        - e.g.: {"192.168.0.1":"eth0"}
+
+    """
     def __init__(self: object):
-        self.currIP = ""
+        "Initialise Class, including obtaining all addresses using netifaces"
+        self.workingIP = "0.0.0.0" # Default to all interfaces
         self.interfaces = {}
         self.addresses = {}
 
@@ -39,28 +55,42 @@ class Interfaces():
                 self.interfaces[i] = currInterface
 
     def setAddress(self: object, addr: str="0.0.0.0") -> bool:
+        """- Takes a string argument and validates that it corresponds to an address in use by the machine
+        - Sets the validated address to self.workingIP if successful
+        - Returns whether validation was successful
+
+        """
         if addr in self.interfaces.keys(): # i.e. did they submit a valid interface
-            self.currIP = self.interfaces.get(addr)[0] # Select the first address from the interface
+            self.workingIP = self.interfaces.get(addr)[0] # Select the first address from the interface
             return True
         elif addr in self.addresses.keys() or addr == "0.0.0.0": # i.e. they submitted an IP address
-            self.currIP = addr
+            self.workingIP = addr
             return True
         else:
             return False
             
 
     def getPossibleAddresses(self: object) -> dict:
-        if self.currIP == "":
+        "Returns a list of possible access addresses based on whether the workingIP is 0.0.0.0 or not"
+        if self.workingIP == "":
             return {}
-        elif self.currIP == "0.0.0.0":
+        elif self.workingIP == "0.0.0.0":
             return self.interfaces
         else:
-            return {self.addresses[self.currIP]: [self.currIP]}
+            return {self.addresses[self.workingIP]: [self.workingIP]}
     
 
 
 ##### HTTP Server #####
 class ServerConfig():
+    """ServerConfig Class
+    Stores config for the UpServer class
+
+    Can take kwargs on initialisation to overwrite default values
+    Example of using this with argparse:
+    config = ServerConfig(**args.__dict__)
+
+    """
     def __init__(self, **kwargs):
         self.verbose = True
         self.port = 80
@@ -83,6 +113,20 @@ class ServerConfig():
         return f"""<UpServerConfig: {self.__dict__}>"""
 
 class UpServer():
+    """
+    UpServer: The main class of the "UP" HTTP Tool
+    https://github.com/MuirlandOracle/up-http-tool
+
+    This class allows you to customise and extend the tool.
+    It uses the ServerConfig class to store configuration internally at UpServer.config. As such, the following dissassembled initialisation sequence should work:
+    server = UpServer(Interfaces(), noCreateApp=True) # Create an instance without generating the Flask application
+    server.config.port = 8080 # Example changing config
+    app = server.createApp() # Create the Flask application with the updated config without storing the app inside the object
+    server.start(app=app) # Pass the generated Flask app into the server
+
+    Pass an object (e.g. ServerConfig or argparse.Namespace, etc) into the initialisation process to adjust default args.
+
+    """
     def __init__(self:object, interfaces:Interfaces, args = None, noCreateApp:bool = False):
         self.interfaces = interfaces
         self.mutex = threading.Lock() # Mutex to protect the console should multiple requests come in simultaneously
@@ -101,6 +145,12 @@ class UpServer():
 
     ##### Display Functions #####
     def printInfo(self:object, quiet=False):
+        """Print information about the running configuration
+        e.g. serve directory, interfaces, etc
+
+        The "quiet" argument disables line breaks
+
+        """
         headerstyle = "\n[bold underline]{}[/bold underline]"
         c = Console(highlight=False)
         if not (self.config.accessible or quiet):
@@ -119,6 +169,7 @@ class UpServer():
             c.rule()
 
     def renderTable(self:object, title: str, cols: list, arr: list):
+        "Render a multidict into a table. Internal use only"
         t = Table(title=title)
         for i in cols:
             t.add_column(i, overflow="fold")
@@ -128,6 +179,7 @@ class UpServer():
 
     @staticmethod
     def getBody():
+        "Obtain and parse the request body. Internal use only"
         if request.headers.get("Content-Type") == "application/json":
             try:
                 data = request.json
@@ -138,6 +190,7 @@ class UpServer():
         return data
 
     def createApp(self:object):
+        "Create the Flask application based on instance configuration"
         app = Flask(__name__)
 
         # Handle GET requests 
@@ -208,6 +261,7 @@ class UpServer():
         return app
 
     def start(self, quiet=False, app = None):
+        "Start the application based on either the instance's internal Flask app (if it exists) or a custom version passed into the 'app' parameter"
         # Get the app
         if isinstance(app, Flask):
             workingApp = app
@@ -218,9 +272,9 @@ class UpServer():
             
         if not quiet:
             self.printInfo(quiet=True)
-            print(f"Serving on http://{self.interfaces.currIP}:{self.config.port}")
+            print(f"Serving on http://{self.interfaces.workingIP}:{self.config.port}")
 
-        threading.Thread(target=lambda: waitress.serve(workingApp, port=self.config.port, host=self.interfaces.currIP), daemon=True).start() # Run the HTTP server in the background so that the enter-for-info works
+        threading.Thread(target=lambda: waitress.serve(workingApp, port=self.config.port, host=self.interfaces.workingIP), daemon=True).start() # Run the HTTP server in the background so that the enter-for-info works
         while True:
             try:
                 input()
@@ -232,13 +286,19 @@ class UpServer():
 ##### Argument Parsing #####
 def validAddress(interfaces: Interfaces, addr: str="0.0.0.0"): # Validate that the requested IP address / interface is suitable to bind the server to
     if interfaces.setAddress(addr):
-        return interfaces.currIP
+        return interfaces.workingIP
     else:
         raise argparse.ArgumentTypeError(f"'{addr}' is not a valid IP address or interface  assigned to this machine") 
     
 
 
 def parseUpArgs(interfaces: Interfaces) -> argparse.Namespace:
+    """parseUpArgs
+    Argument parser compatible with the UpServer default ServerConfig
+
+    Takes an Instances object to validate the chosen IP address and store it within the instance.
+
+    """
     parser = argparse.ArgumentParser(description="UP Simple HTTP server for debugging / hacking")
     parser.add_argument("-v", "--verbose", help="Show request headers / information (you probably want this active)", action="store_true")
     parser.add_argument("-q", "--quiet", help="Don't show information on startup", action="store_true")
