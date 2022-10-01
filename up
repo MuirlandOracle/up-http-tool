@@ -22,6 +22,44 @@ from flask import Flask, send_from_directory, request
 # Mutex to protect the console should multiple requests come in simultaneously
 mutex = threading.Lock()
 
+##### Network Interface Interaction #####
+class Interfaces():
+    def __init__(self: object):
+        self.currIP = ""
+        self.interfaces = {}
+        self.addresses = {}
+
+        # Extract interfaces
+        interfaces = netifaces.interfaces()
+        for i in interfaces:
+            interface = netifaces.ifaddresses(i).get(netifaces.AF_INET)
+            if interface != None:
+                currInterface = []
+                for link in interface:
+                    currInterface.append(link["addr"])
+                    self.addresses[link["addr"]] = i
+                self.interfaces[i] = currInterface
+
+    def setAddress(self: object, addr: str="0.0.0.0") -> bool:
+        if addr in self.interfaces.keys(): # i.e. did they submit a valid interface
+            self.currIP = self.interfaces.get(addr)[0] # Select the first address from the interface
+            return True
+        elif addr in self.addresses.keys() or addr == "0.0.0.0": # i.e. they submitted an IP address
+            self.currIP = addr
+            return True
+        else:
+            return False
+            
+
+    def getPossibleAddresses(self: object) -> dict:
+        if self.currIP == "":
+            return {}
+        elif self.currIP == "0.0.0.0":
+            return self.interfaces
+        else:
+            return {self.addresses[self.currIP]: self.currIP}
+    
+
 
 ##### Display Functions #####
 def printInfo(directory=os.getcwd(), quiet=False, noServe=False):
@@ -160,6 +198,9 @@ def validAddress(addr): # Validate that the requested IP address / interface is 
 
 ##### Start the App #####
 if __name__ == "__main__":
+    # Initialise Interfaces
+    interfaces = Interfaces()
+
     # Arg Parsing
     parser = argparse.ArgumentParser(description="UP Simple HTTP server for debugging / hacking")
     parser.add_argument("-v", "--verbose", help="Show request headers / information (you probably want this active)", action="store_true")
