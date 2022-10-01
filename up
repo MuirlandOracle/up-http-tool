@@ -229,7 +229,7 @@ class UpServer():
             self.printInfo()
 
 
-##### Validator Functions #####
+##### Argument Parsing #####
 def validAddress(interfaces: Interfaces, addr: str="0.0.0.0"): # Validate that the requested IP address / interface is suitable to bind the server to
     if interfaces.setAddress(addr):
         return interfaces.currIP
@@ -238,12 +238,7 @@ def validAddress(interfaces: Interfaces, addr: str="0.0.0.0"): # Validate that t
     
 
 
-##### Start the App #####
-if __name__ == "__main__":
-    # Initialise Interfaces
-    interfaces = Interfaces()
-
-    # Arg Parsing
+def parseUpArgs(interfaces: Interfaces) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="UP Simple HTTP server for debugging / hacking")
     parser.add_argument("-v", "--verbose", help="Show request headers / information (you probably want this active)", action="store_true")
     parser.add_argument("-q", "--quiet", help="Don't show information on startup", action="store_true")
@@ -262,7 +257,17 @@ if __name__ == "__main__":
 
     parser.add_argument("-ec", "--enable-cors", help="Add headers to enable CORS (relax browser same-origin policy requirements)", action="store_true")
 
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+
+##### Start the App #####
+if __name__ == "__main__":
+    # Initialise Interfaces
+    interfaces = Interfaces()
+    
+    # Parse arguments
+    args = parseUpArgs(interfaces)
 
     # Start app
     server = UpServer(interfaces, args=args)
