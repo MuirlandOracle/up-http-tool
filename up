@@ -19,8 +19,6 @@ from datetime import datetime
 from flask import Flask, send_from_directory, request
 
 
-# Mutex to protect the console should multiple requests come in simultaneously
-mutex = threading.Lock()
 
 ##### Network Interface Interaction #####
 class Interfaces():
@@ -57,127 +55,163 @@ class Interfaces():
         elif self.currIP == "0.0.0.0":
             return self.interfaces
         else:
-            return {self.addresses[self.currIP]: self.currIP}
+            return {self.addresses[self.currIP]: [self.currIP]}
     
-
-
-##### Display Functions #####
-def printInfo(directory=os.getcwd(), quiet=False, noServe=False):
-    headerstyle = "\n[bold underline]{}[/bold underline]"
-    c = Console(highlight=False)
-    if not quiet:
-        c.rule("Information")
-    if not noServe: # No point in printing this if we're not serving files
-        c.print(headerstyle.format("Directory"))
-        c.print(directory)
-        c.print(headerstyle.format("Files"))
-        c.print(Columns(os.listdir(directory)))
-    c.print(headerstyle.format("Interfaces"))
-    for i in netifaces.interfaces():
-        interface = netifaces.ifaddresses(i).get(netifaces.AF_INET)
-        if interface != None:
-            for link in interface:
-                if link["addr"] != "127.0.0.1":
-                    c.print(f"{i}: [italic]{link['addr']}[/ italic]")
-    c.print()
-    if not quiet:
-        c.rule()
-
-def renderTable(title: str, cols: list, arr: list):
-    #t = Table(title=title, show_lines=True)
-    t = Table(title=title)
-    for i in cols:
-        t.add_column(i, overflow="fold")
-    for i in arr:
-        t.add_row(*i)
-    return t
 
 
 ##### HTTP Server #####
-def getBody():
-    if request.headers.get("Content-Type") == "application/json":
-        try:
-            data = request.json
-        except:
-            data = {}
-    else:
-        data = tuple([(k,v) for k,v in request.form.items()])
-    return data
+class ServerConfig():
+    def __init__(self, **kwargs):
+        self.verbose = True
+        self.quiet = False
+        self.port = 80
+        self.msg = ""
+        self.directory = os.getcwd()
+        self.no_serve = False
+        self.accessible = False
+        self.no_colour = False
+        self.enable_cors = False
 
-def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=False, noColourMode=False, addCors=True, resMsg=""):
-    app = Flask(__name__)
+        for i in kwargs.items():
+            if hasattr(self, i[0]):
+                setattr(self, i[0], i[1])
 
-    # Handle GET requests 
-    @app.route("/", defaults={"path":""})
-    @app.route('/<path:path>')
-    def sendFile(path):
-        if not noServe:
-            return send_from_directory(servDir, path)
+    def __str__(self):
+        return f"""<UpServerConfig: {self.__dict__}>"""
+
+class UpServer():
+    def __init__(self:object, interfaces:Interfaces, args = None):
+        self.interfaces = interfaces
+        self.mutex = threading.Lock() # Mutex to protect the console should multiple requests come in simultaneously
+        # Parse arguments into a server config
+        if args == None: # Default arguments
+            self.config = ServerConfig()
+        elif not hasattr(args, "__dict__"): # If the object attribute can't be turned into a dict then it's not correct
+            raise Exception("Invalid args object passed to UpServer")
         else:
-            return resMsg
-            
-
-    # Handle all other request methods
-    @app.errorhandler(405)
-    def catchall(e):
-        return resMsg, 200
-    
-    # Relax SOP restrictions if requested  -- let's be honest, we don't need 'em anyway
-    if addCors:
-        @app.after_request
-        def enableCors(r):
-            r.headers["Access-Control-Allow-Origin"] = request.referrer  or "*"
-            r.headers["Access-Control-Allow-Method"] = "*"
-            r.headers["Access-Control-Allow-Credentials"] = "true"
-            r.headers["Access-Control-Expose-Headers"] = "*"
-            r.headers["Access-Control-Allow-Headers"] = "*"
-            return r
+            self.config = ServerConfig(**args.__dict__)
 
 
-    @app.after_request
-    def printHeaders(r):
-        mutex.acquire()
-        # Shoutout @Sam1ser for this one -- https://github.com/Samiser/pfp-colour-changer/blob/main/main.py
-        c = Console(style=f"rgb({','.join(str(round(i*255)) for i in colorsys.hsv_to_rgb(random.random(), 0.3, 0.95))})" if not noColourMode else "", highlight=False)
-        c.print(f"""{"=============================================" + chr(10) if debug and not accessibleMode else ""}{request.remote_addr} - - [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "{request.method} {request.full_path.rstrip('?')} {request.environ.get('SERVER_PROTOCOL')}" {r.status_code} -""")
-        if debug:
-            if not accessibleMode:
-                c.print(renderTable("", ["Header", "Value"], request.headers))
+    ##### Display Functions #####
+    def printInfo(self:object, directory=os.getcwd(), quiet=False, noServe=False):
+        headerstyle = "\n[bold underline]{}[/bold underline]"
+        c = Console(highlight=False)
+        if not quiet:
+            c.rule("Information")
+        if not noServe: # No point in printing this if we're not serving files
+            c.print(headerstyle.format("Directory"))
+            c.print(directory)
+            c.print(headerstyle.format("Files"))
+            c.print(Columns(os.listdir(directory)))
+        c.print(headerstyle.format("Interfaces"))
+        """
+        for i in netifaces.interfaces():
+            interface = netifaces.ifaddresses(i).get(netifaces.AF_INET)
+            if interface != None:
+                for link in interface:
+                    if link["addr"] != "127.0.0.1":
+                        c.print(f"{i}: [italic]{link['addr']}[/ italic]")
+        """
+        for i in self.interfaces.getPossibleAddresses().items():
+            for addr in i[1]:
+                c.print(f"{i[0]}: [italic]{addr}[/ italic]") 
+        c.print()
+        if not quiet:
+            c.rule()
+
+    def renderTable(self:object, title: str, cols: list, arr: list):
+        t = Table(title=title)
+        for i in cols:
+            t.add_column(i, overflow="fold")
+        for i in arr:
+            t.add_row(*i)
+        return t
+
+    @staticmethod
+    def getBody():
+        if request.headers.get("Content-Type") == "application/json":
+            try:
+                data = request.json
+            except:
+                data = {}
+        else:
+            data = tuple([(k,v) for k,v in request.form.items()])
+        return data
+
+    def createApp(self:object, servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=False, noColourMode=False, addCors=True, resMsg=""):
+        app = Flask(__name__)
+
+        # Handle GET requests 
+        @app.route("/", defaults={"path":""})
+        @app.route('/<path:path>')
+        def sendFile(path):
+            if not noServe:
+                return send_from_directory(servDir, path)
             else:
-                c.print("Headers:")
-                for i in request.headers:
-                    c.print(f" {i[0]}: {i[1]}")
+                return resMsg
+                
 
-            # Handle Data
-            data = getBody()
-            if len(data) > 0:
-                c.print("[bold underline]Body:[/ bold underline]")
-                if type(data) == dict:
-                    c.print_json(data=data, highlight=(not noColourMode))
-                elif not accessibleMode:
-                    c.print(renderTable("", ["Key", "Value"], data))
-                else:
-                    for i in data:
-                        c.print(f" {i[0]}: {i[1]}")
+        # Handle all other request methods
+        @app.errorhandler(405)
+        def catchall(e):
+            return resMsg, 200
+        
+        # Relax SOP restrictions if requested  -- let's be honest, we don't need 'em anyway
+        if addCors:
+            @app.after_request
+            def enableCors(r):
+                r.headers["Access-Control-Allow-Origin"] = request.referrer  or "*"
+                r.headers["Access-Control-Allow-Method"] = "*"
+                r.headers["Access-Control-Allow-Credentials"] = "true"
+                r.headers["Access-Control-Expose-Headers"] = "*"
+                r.headers["Access-Control-Allow-Headers"] = "*"
+                return r
 
 
-            # Handle query parameters
-            args = tuple([(i,v) for i,v in request.args.items()])
-            if len(args) > 0:
-                c.print("[bold underline]Query Parameters:[/ bold underline]")
+        @app.after_request
+        def printHeaders(r):
+            self.mutex.acquire()
+            # Shoutout @Sam1ser for this one -- https://github.com/Samiser/pfp-colour-changer/blob/main/main.py
+            c = Console(style=f"rgb({','.join(str(round(i*255)) for i in colorsys.hsv_to_rgb(random.random(), 0.3, 0.95))})" if not noColourMode else "", highlight=False)
+            c.print(f"""{"=============================================" + chr(10) if debug and not accessibleMode else ""}{request.remote_addr} - - [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "{request.method} {request.full_path.rstrip('?')} {request.environ.get('SERVER_PROTOCOL')}" {r.status_code} -""")
+            if debug:
                 if not accessibleMode:
-                    c.print(renderTable("", ["Key", "Value"], args))
+                    c.print(self.renderTable("", ["Header", "Value"], request.headers))
                 else:
-                    for i in args:
+                    c.print("Headers:")
+                    for i in request.headers:
                         c.print(f" {i[0]}: {i[1]}")
-            mutex.release()
-        return r
-    return app
+
+                # Handle Data
+                data = self.getBody()
+                if len(data) > 0:
+                    c.print("[bold underline]Body:[/ bold underline]")
+                    if type(data) == dict:
+                        c.print_json(data=data, highlight=(not noColourMode))
+                    elif not accessibleMode:
+                        c.print(self.renderTable("", ["Key", "Value"], data))
+                    else:
+                        for i in data:
+                            c.print(f" {i[0]}: {i[1]}")
+
+
+                # Handle query parameters
+                args = tuple([(i,v) for i,v in request.args.items()])
+                if len(args) > 0:
+                    c.print("[bold underline]Query Parameters:[/ bold underline]")
+                    if not accessibleMode:
+                        c.print(self.renderTable("", ["Key", "Value"], args))
+                    else:
+                        for i in args:
+                            c.print(f" {i[0]}: {i[1]}")
+                self.mutex.release()
+            return r
+        return app
 
 ##### Validator Functions #####
 def validAddress(interfaces: Interfaces, addr: str="0.0.0.0"): # Validate that the requested IP address / interface is suitable to bind the server to
     if interfaces.setAddress(addr):
-        return addr
+        return interfaces.currIP
     else:
         raise argparse.ArgumentTypeError(f"'{addr}' is not a valid IP address or interface  assigned to this machine") 
     
@@ -214,10 +248,12 @@ if __name__ == "__main__":
 
 
     # Start app
+    server = UpServer(interfaces, args=args)
     if not args.quiet:
-        printInfo(args.directory, quiet=True, noServe=args.no_serve)
+        server.printInfo(args.directory, quiet=True, noServe=args.no_serve)
         print(f"Serving on http://{args.ip}:{args.port}")
-    app = createApp(debug=args.verbose, 
+
+    app = server.createApp(debug=args.verbose, 
                     servDir=args.directory, 
                     accessibleMode=args.accessible, 
                     noColourMode=args.no_colour, 
@@ -230,4 +266,4 @@ if __name__ == "__main__":
             input()
         except KeyboardInterrupt:
             exit()
-        printInfo(args.directory, quiet=args.accessible, noServe=args.no_serve)
+        server.printInfo(args.directory, quiet=args.accessible, noServe=args.no_serve)
