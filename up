@@ -66,7 +66,7 @@ def getBody():
         data = tuple([(k,v) for k,v in request.form.items()])
     return data
 
-def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=False, noColourMode=False, addCors=True):
+def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=False, noColourMode=False, addCors=True, resMsg=""):
     app = Flask(__name__)
 
     # Handle GET requests 
@@ -76,13 +76,13 @@ def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=Fa
         if not noServe:
             return send_from_directory(servDir, path)
         else:
-            return ""
+            return resMsg
             
 
     # Handle all other request methods
     @app.errorhandler(405)
     def catchall(e):
-        return "Message Received", 200
+        return resMsg, 200
     
     # Relax SOP restrictions if requested  -- let's be honest, we don't need 'em anyway
     if addCors:
@@ -166,6 +166,7 @@ if __name__ == "__main__":
     parser.add_argument("-q", "--quiet", help="Don't show information on startup", action="store_true")
     parser.add_argument("-p", "--port", help="The port to serve on. Defaults to port 80", default=80)
     parser.add_argument("-i", "--ip", help="The IP to serve on. Defaults to all interfaces (0.0.0.0)", default="0.0.0.0", type=validAddress)
+    parser.add_argument("-m", "--msg", help="Message to respond to non-GET requests with. Defaults to ''.", default="")
 
     dirGrp = parser.add_mutually_exclusive_group() # Directory arguments
     dirGrp.add_argument("-d", "--directory", help="Directory to serve files from. Defaults to current working directory", default=os.getcwd())
@@ -188,7 +189,13 @@ if __name__ == "__main__":
     if not args.quiet:
         printInfo(args.directory, quiet=True, noServe=args.no_serve)
         print(f"Serving on http://{args.ip}:{args.port}")
-    app = createApp(debug=args.verbose, servDir=args.directory, accessibleMode=args.accessible, noColourMode=args.no_colour, noServe=args.no_serve, addCors=args.enable_cors)
+    app = createApp(debug=args.verbose, 
+                    servDir=args.directory, 
+                    accessibleMode=args.accessible, 
+                    noColourMode=args.no_colour, 
+                    noServe=args.no_serve, 
+                    addCors=args.enable_cors,
+                    resMsg=args.msg)
     threading.Thread(target=lambda: waitress.serve(app, port=args.port, host=args.ip), daemon=True).start() # Run the HTTP server in the background so that the enter-for-info works
     while True:
         try:
