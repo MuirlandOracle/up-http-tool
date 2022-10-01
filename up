@@ -16,6 +16,7 @@ from rich.console import Console
 from rich.columns import Columns
 from rich.table import Table
 from datetime import datetime
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import Flask, send_from_directory, request
 
 
@@ -99,6 +100,7 @@ class ServerConfig():
         self.no_serve = False
         self.accessible = False
         self.no_colour = False
+        self.proxies = 0
         self.enable_cors = False
 
         for i in kwargs.items():
@@ -192,6 +194,7 @@ class UpServer():
     def createApp(self:object):
         "Create the Flask application based on instance configuration"
         app = Flask(__name__)
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=self.config.proxies, x_host=self.config.proxies)
 
         # Handle GET requests 
         @app.route("/", defaults={"path":""})
@@ -290,6 +293,15 @@ def validAddress(interfaces: Interfaces, addr: str="0.0.0.0"): # Validate that t
     else:
         raise argparse.ArgumentTypeError(f"'{addr}' is not a valid IP address or interface  assigned to this machine") 
     
+def positiveInt(x):
+    try:
+        x = int(x)
+        assert(x>=0)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"--proxies argument: '{x}', is not an integer")
+    except AssertionError:
+        raise argparse.ArgumentTypeError(f"Argument for --proxies must be greater than or equal to 0")
+    return x
 
 
 def parseUpArgs(interfaces: Interfaces) -> argparse.Namespace:
@@ -305,6 +317,7 @@ def parseUpArgs(interfaces: Interfaces) -> argparse.Namespace:
     parser.add_argument("-p", "--port", help="The port to serve on. Defaults to port 80", default=80)
     parser.add_argument("-i", "--ip", help="The IP to serve on. Defaults to all interfaces (0.0.0.0)", default="0.0.0.0", type=lambda addr: validAddress(interfaces, addr))
     parser.add_argument("-m", "--msg", help="Message to respond to non-GET requests with. Defaults to ''.", default="")
+    parser.add_argument("--proxies", help="Number of proxies in front of the tool. Defaults to 0", type=positiveInt, default=0)
 
     dirGrp = parser.add_mutually_exclusive_group() # Directory arguments
     dirGrp.add_argument("-d", "--directory", help="Directory to serve files from. Defaults to current working directory", default=os.getcwd())

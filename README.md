@@ -10,7 +10,8 @@ This tool has a couple of advantages over the simple version:
 
 Help Menu:
 ```
-usage: up [-h] [-v] [-q] [-p PORT] [-i IP] [-m MSG] [-d DIRECTORY | --no-serve] [--accessible | -c] [-ec]
+usage: up [-h] [-v] [-q] [-p PORT] [-i IP] [-m MSG] [--proxies PROXIES] [-d DIRECTORY | --no-serve]
+          [--accessible | -c] [-ec]
 
 UP Simple HTTP server for debugging / hacking
 
@@ -21,6 +22,7 @@ options:
   -p PORT, --port PORT  The port to serve on. Defaults to port 80
   -i IP, --ip IP        The IP to serve on. Defaults to all interfaces (0.0.0.0)
   -m MSG, --msg MSG     Message to respond to non-GET requests with. Defaults to ''.
+  --proxies PROXIES     Number of proxies in front of the tool. Defaults to 0
   -d DIRECTORY, --directory DIRECTORY
                         Directory to serve files from. Defaults to current working directory
   --no-serve            Do not serve files
