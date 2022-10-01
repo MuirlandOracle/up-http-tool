@@ -81,6 +81,27 @@ class Interfaces():
             return {self.addresses[self.workingIP]: [self.workingIP]}
     
 
+##### Helper Functions #####
+def renderTable(title: str, cols: list, arr: list):
+    "Render a multidict into a table. Internal use only"
+    t = Table(title=title)
+    for i in cols:
+        t.add_column(i, overflow="fold")
+    for i in arr:
+        t.add_row(*i)
+    return t
+
+def getBody():
+    "Obtain and parse the request body. Internal use only"
+    if request.headers.get("Content-Type") == "application/json":
+        try:
+            data = request.json
+        except:
+            data = {}
+    else:
+        data = tuple([(k,v) for k,v in request.form.items()])
+    return data
+
 
 ##### HTTP Server #####
 class ServerConfig():
@@ -145,7 +166,6 @@ class UpServer():
             self.app = self.createApp()
 
 
-    ##### Display Functions #####
     def printInfo(self:object, quiet=False):
         """Print information about the running configuration
         e.g. serve directory, interfaces, etc
@@ -170,26 +190,7 @@ class UpServer():
         if not (self.config.accessible or quiet):
             c.rule()
 
-    def renderTable(self:object, title: str, cols: list, arr: list):
-        "Render a multidict into a table. Internal use only"
-        t = Table(title=title)
-        for i in cols:
-            t.add_column(i, overflow="fold")
-        for i in arr:
-            t.add_row(*i)
-        return t
 
-    @staticmethod
-    def getBody():
-        "Obtain and parse the request body. Internal use only"
-        if request.headers.get("Content-Type") == "application/json":
-            try:
-                data = request.json
-            except:
-                data = {}
-        else:
-            data = tuple([(k,v) for k,v in request.form.items()])
-        return data
 
     def createApp(self:object):
         "Create the Flask application based on instance configuration"
@@ -231,20 +232,20 @@ class UpServer():
             c.print(f"""{"=============================================" + chr(10) if self.config.verbose and not self.config.accessible else ""}{request.remote_addr} - - [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "{request.method} {request.full_path.rstrip('?')} {request.environ.get('SERVER_PROTOCOL')}" {r.status_code} -""")
             if self.config.verbose:
                 if not self.config.accessible:
-                    c.print(self.renderTable("", ["Header", "Value"], request.headers))
+                    c.print(renderTable("", ["Header", "Value"], request.headers))
                 else:
                     c.print("Headers:")
                     for i in request.headers:
                         c.print(f" {i[0]}: {i[1]}")
 
                 # Handle Data
-                data = self.getBody()
+                data = getBody()
                 if len(data) > 0:
                     c.print("[bold underline]Body:[/ bold underline]")
                     if type(data) == dict:
                         c.print_json(data=data, highlight=(not self.config.no_colour))
                     elif not self.config.accessible:
-                        c.print(self.renderTable("", ["Key", "Value"], data))
+                        c.print(renderTable("", ["Key", "Value"], data))
                     else:
                         for i in data:
                             c.print(f" {i[0]}: {i[1]}")
@@ -255,7 +256,7 @@ class UpServer():
                 if len(args) > 0:
                     c.print("[bold underline]Query Parameters:[/ bold underline]")
                     if not self.config.accessible:
-                        c.print(self.renderTable("", ["Key", "Value"], args))
+                        c.print(renderTable("", ["Key", "Value"], args))
                     else:
                         for i in args:
                             c.print(f" {i[0]}: {i[1]}")
