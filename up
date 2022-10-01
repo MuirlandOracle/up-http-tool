@@ -175,24 +175,11 @@ def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=Fa
     return app
 
 ##### Validator Functions #####
-def validAddress(addr): # Validate that the requested IP address / interface is suitable to bind the server to
-    interfaces = netifaces.interfaces() # Get all interfaces
-    if addr == "0.0.0.0": # This is the default anyway...
+def validAddress(interfaces: Interfaces, addr: str="0.0.0.0"): # Validate that the requested IP address / interface is suitable to bind the server to
+    if interfaces.setAddress(addr):
         return addr
-    elif addr in interfaces: # Check to see if the user specified a valid interface
-        interface = netifaces.ifaddresses(addr).get(netifaces.AF_INET) # If so, grab a list of IPs assigned to the interface
-        if interface == None: # If none, die
-            raise argparse.ArgumentTypeError(f"'{addr}' does not have any valid IP addresses assigned to it") 
-        else: # Return the first valid IP. If you've added more, that's your problem -- specify the damn address yourself
-            return interface[0].get("addr")
-    else: # It ain't the default, and it ain't an interface, so assume it's an address
-        for i in interfaces:
-            interface = netifaces.ifaddresses(i).get(netifaces.AF_INET)
-            if interface != None: # If there are no addresses assigned, skip past this interface
-                for link in interface:
-                    if link["addr"] == addr:
-                        return addr
-    raise argparse.ArgumentTypeError(f"'{addr}' is not a valid IP address or interface  assigned to this machine") 
+    else:
+        raise argparse.ArgumentTypeError(f"'{addr}' is not a valid IP address or interface  assigned to this machine") 
     
 
 
@@ -206,7 +193,7 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", help="Show request headers / information (you probably want this active)", action="store_true")
     parser.add_argument("-q", "--quiet", help="Don't show information on startup", action="store_true")
     parser.add_argument("-p", "--port", help="The port to serve on. Defaults to port 80", default=80)
-    parser.add_argument("-i", "--ip", help="The IP to serve on. Defaults to all interfaces (0.0.0.0)", default="0.0.0.0", type=validAddress)
+    parser.add_argument("-i", "--ip", help="The IP to serve on. Defaults to all interfaces (0.0.0.0)", default="0.0.0.0", type=lambda addr: validAddress(interfaces, addr))
     parser.add_argument("-m", "--msg", help="Message to respond to non-GET requests with. Defaults to ''.", default="")
 
     dirGrp = parser.add_mutually_exclusive_group() # Directory arguments
