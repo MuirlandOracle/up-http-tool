@@ -216,11 +216,11 @@ class UpServer():
         if self.config.enable_cors:
             @app.after_request
             def enableCors(r):
-                r.headers["Access-Control-Allow-Origin"] = request.referrer  or "*"
+                r.headers["Access-Control-Allow-Origin"] = request.origin or "*"
                 r.headers["Access-Control-Allow-Method"] = "*"
                 r.headers["Access-Control-Allow-Credentials"] = "true"
                 r.headers["Access-Control-Expose-Headers"] = "*"
-                r.headers["Access-Control-Allow-Headers"] = "*"
+                r.headers["Access-Control-Allow-Headers"] = request.headers.get("Access-Control-Request-Headers") or "*"
                 return r
 
 
