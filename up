@@ -75,6 +75,10 @@ class ServerConfig():
             if hasattr(self, i[0]):
                 setattr(self, i[0], i[1])
 
+
+        # Accessible means that colour should be disabled as well
+        self.no_colour = True if self.accessible else self.no_colour
+
     def __str__(self):
         return f"""<UpServerConfig: {self.__dict__}>"""
 
@@ -195,7 +199,7 @@ class UpServer():
                     else:
                         for i in args:
                             c.print(f" {i[0]}: {i[1]}")
-                self.mutex.release()
+            self.mutex.release()
             return r
         return app
 
@@ -233,10 +237,6 @@ if __name__ == "__main__":
     parser.add_argument("-ec", "--enable-cors", help="Add headers to enable CORS (relax browser same-origin policy requirements)", action="store_true")
 
     args = parser.parse_args()
-
-    if args.accessible:
-        args.no_colour = True
-
 
     # Start app
     server = UpServer(interfaces, args=args)
