@@ -66,7 +66,7 @@ def getBody():
         data = tuple([(k,v) for k,v in request.form.items()])
     return data
 
-def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=False, noColourMode=False, noCors=False):
+def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=False, noColourMode=False, addCors=True):
     app = Flask(__name__)
 
     # Handle GET requests 
@@ -84,10 +84,10 @@ def createApp(servDir=os.getcwd(), debug=False, accessibleMode=False, noServe=Fa
     def catchall(e):
         return "Message Received", 200
     
-    # Remove CORS restrictions if requested  -- let's be honest, we don't need 'em anyway
-    if noCors:
+    # Relax SOP restrictions if requested  -- let's be honest, we don't need 'em anyway
+    if addCors:
         @app.after_request
-        def killCors(r):
+        def enableCors(r):
             r.headers["Access-Control-Allow-Origin"] = request.referrer  or "*"
             r.headers["Access-Control-Allow-Method"] = "*"
             r.headers["Access-Control-Allow-Credentials"] = "true"
@@ -176,7 +176,7 @@ if __name__ == "__main__":
     accessGrp.add_argument("--accessible", action="store_true", help="Disable ASCII art (automatically adds --no-colour)")
     accessGrp.add_argument("-c","--no-colour", action="store_true", help="Disable colour printing")
 
-    parser.add_argument("-dc", "--disable-cors", help="Add headers to disable CORS", action="store_true")
+    parser.add_argument("-ec", "--enable-cors", help="Add headers to enable CORS (relax browser same-origin policy requirements)", action="store_true")
 
     args = parser.parse_args()
 
@@ -188,7 +188,7 @@ if __name__ == "__main__":
     if not args.quiet:
         printInfo(args.directory, quiet=True, noServe=args.no_serve)
         print(f"Serving on http://{args.ip}:{args.port}")
-    app = createApp(debug=args.verbose, servDir=args.directory, accessibleMode=args.accessible, noColourMode=args.no_colour, noServe=args.no_serve, noCors=args.disable_cors)
+    app = createApp(debug=args.verbose, servDir=args.directory, accessibleMode=args.accessible, noColourMode=args.no_colour, noServe=args.no_serve, addCors=args.enable_cors)
     threading.Thread(target=lambda: waitress.serve(app, port=args.port, host=args.ip), daemon=True).start() # Run the HTTP server in the background so that the enter-for-info works
     while True:
         try:

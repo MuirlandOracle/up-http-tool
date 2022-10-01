@@ -10,26 +10,22 @@ This tool has a couple of advantages over the simple version:
 
 Help Menu:
 ```
-usage: up [-h] [-v] [-q] [-p PORT] [-i IP] [-d DIRECTORY | --no-serve]
-          [--accessible | -c] [-dc]
+usage: up [-h] [-v] [-q] [-p PORT] [-i IP] [-d DIRECTORY | --no-serve] [--accessible | -c] [-ec]
 
 UP Simple HTTP server for debugging / hacking
 
 options:
   -h, --help            show this help message and exit
-  -v, --verbose         Show request headers / information (you probably want
-                        this active)
+  -v, --verbose         Show request headers / information (you probably want this active)
   -q, --quiet           Don't show information on startup
   -p PORT, --port PORT  The port to serve on. Defaults to port 80
-  -i IP, --ip IP        The IP to serve on. Defaults to all interfaces
-                        (0.0.0.0)
+  -i IP, --ip IP        The IP to serve on. Defaults to all interfaces (0.0.0.0)
   -d DIRECTORY, --directory DIRECTORY
-                        Directory to serve files from. Defaults to current
-                        working directory
+                        Directory to serve files from. Defaults to current working directory
   --no-serve            Do not serve files
   --accessible          Disable ASCII art (automatically adds --no-colour)
   -c, --no-colour       Disable colour printing
-  -dc, --disable-cors   Add headers to disable CORS
+  -ec, --enable-cors    Add headers to enable CORS (relax browser same-origin policy requirements)
 ```
 
 ## Installation Instructions
