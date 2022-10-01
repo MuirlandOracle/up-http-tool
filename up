@@ -63,7 +63,6 @@ class Interfaces():
 class ServerConfig():
     def __init__(self, **kwargs):
         self.verbose = True
-        self.quiet = False
         self.port = 80
         self.msg = ""
         self.directory = os.getcwd()
@@ -93,30 +92,22 @@ class UpServer():
 
 
     ##### Display Functions #####
-    def printInfo(self:object, directory=os.getcwd(), quiet=False, noServe=False):
+    def printInfo(self:object, quiet=False):
         headerstyle = "\n[bold underline]{}[/bold underline]"
         c = Console(highlight=False)
-        if not quiet:
+        if not (self.config.accessible or quiet):
             c.rule("Information")
-        if not noServe: # No point in printing this if we're not serving files
+        if not self.config.no_serve: # No point in printing this if we're not serving files
             c.print(headerstyle.format("Directory"))
-            c.print(directory)
+            c.print(self.config.directory)
             c.print(headerstyle.format("Files"))
-            c.print(Columns(os.listdir(directory)))
+            c.print(Columns(os.listdir(self.config.directory)))
         c.print(headerstyle.format("Interfaces"))
-        """
-        for i in netifaces.interfaces():
-            interface = netifaces.ifaddresses(i).get(netifaces.AF_INET)
-            if interface != None:
-                for link in interface:
-                    if link["addr"] != "127.0.0.1":
-                        c.print(f"{i}: [italic]{link['addr']}[/ italic]")
-        """
         for i in self.interfaces.getPossibleAddresses().items():
             for addr in i[1]:
                 c.print(f"{i[0]}: [italic]{addr}[/ italic]") 
         c.print()
-        if not quiet:
+        if not (self.config.accessible or quiet):
             c.rule()
 
     def renderTable(self:object, title: str, cols: list, arr: list):
@@ -250,7 +241,7 @@ if __name__ == "__main__":
     # Start app
     server = UpServer(interfaces, args=args)
     if not args.quiet:
-        server.printInfo(args.directory, quiet=True, noServe=args.no_serve)
+        server.printInfo(quiet=True)
         print(f"Serving on http://{args.ip}:{args.port}")
 
     app = server.createApp(debug=args.verbose, 
@@ -266,4 +257,4 @@ if __name__ == "__main__":
             input()
         except KeyboardInterrupt:
             exit()
-        server.printInfo(args.directory, quiet=args.accessible, noServe=args.no_serve)
+        server.printInfo()
