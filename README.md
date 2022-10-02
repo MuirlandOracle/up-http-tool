@@ -11,7 +11,8 @@ This tool has a couple of advantages over the simple version:
 Help Menu:
 ```
 usage: up [-h] [-v] [-q] [-p PORT] [-i IP] [-m MSG] [--proxies PROXIES]
-          [-o OUTPUT] [-d DIRECTORY | --no-serve] [--accessible | -c] [-ec]
+          [-o OUTPUT] [-nsp NO_SAVE_PARAM] [-d DIRECTORY | --no-serve]
+          [--accessible | -c] [-ec]
 
 UP Simple HTTP server for debugging / hacking
 
@@ -29,6 +30,10 @@ options:
   -o OUTPUT, --output OUTPUT
                         Directory to output request data to. Disabled by
                         default
+  -nsp NO_SAVE_PARAM, --no-save-param NO_SAVE_PARAM
+                        Query parameter which tells output logging to ignore
+                        the request. Defaults to '?noSave'. Only applies if '
+                        --output' is configured
   -d DIRECTORY, --directory DIRECTORY
                         Directory to serve files from. Defaults to current
                         working directory
