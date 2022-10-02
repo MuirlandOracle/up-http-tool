@@ -136,18 +136,18 @@ class LogRequests():
         Fails with PermissionError if you can't write to that directory, or a FileExistsError if the outDir exists and is not a directory
 
         """
-        if self.config.logDir == None:
-            raise Exception("No logDir set in config")
+        if self.config.output == None:
+            raise Exception("No output set in config")
 
         try:
-            os.mkdir(self.config.logDir)
+            os.mkdir(self.config.output)
         except FileExistsError:
-            if not os.path.isdir(self.config.logDir):
-                raise FileExistsError(f"{self.config.logDir} exists and is not a directory")
-            elif not os.access(self.config.logDir, os.W_OK):
-                raise PermissionError(f"{self.config.logDir} exists and is not writeable")
+            if not os.path.isdir(self.config.output):
+                raise FileExistsError(f"{self.config.output} exists and is not a directory")
+            elif not os.access(self.config.output, os.W_OK):
+                raise PermissionError(f"{self.config.output} exists and is not writeable")
         except PermissionError:
-            raise PermissionError(f"You don't have permission to write to {self.config.logDir}")
+            raise PermissionError(f"You don't have permission to write to {self.config.output}")
 
         self.initialised = True
 
@@ -160,14 +160,15 @@ class LogRequests():
             return False
         
 
-        dirName = reqString.replace("/", "_").\
+        dirName = re.sub("(?:\?[^ ]+ )", " ", reqString) # Remove query strings
+        dirName = dirName.replace("/", "_").\
                             replace("[","").\
                             replace("]","").\
                             replace(" ","-").\
                             replace("--","-").\
                             replace('"', "").rstrip("-")
         sanitisationRegex = re.compile("[^A-Za-z0-9]")
-        dirPath = f"{self.config.logDir}/{dirName}"
+        dirPath = f"{self.config.output}/{dirName}"
         os.mkdir(dirPath) # If this fails then it's because you've done something dumb with the logging directory
 
         
@@ -243,7 +244,7 @@ class ServerConfig():
         self.port = 80
         self.msg = ""
         self.directory = os.getcwd()
-        self.logDir = None
+        self.output = None
         self.no_serve = False
         self.accessible = False
         self.no_colour = False
@@ -287,9 +288,16 @@ class UpServer():
         else:
             self.config = ServerConfig(**args.__dict__)
 
+        # Initialise Log
+        self.log = LogRequests(self.config)
+
         # Create app if requested
         if not noCreateApp:
             self.app = self.createApp()
+
+        # Enable Logging if requested
+        if self.config.output != None:
+            self.log.createRootDir()
 
 
     def printInfo(self:object, quiet=False):
@@ -387,7 +395,18 @@ class UpServer():
                     else:
                         for i in args:
                             c.print(f" {i[0]}: {i[1]}")
+
+                # Check for files
+                if len(request.files) > 0:
+                    c.print(f"{len(request.files)} {'file was' if len(request.files) == 1 else 'files were'} received. ", end="")
+                    if self.config.output != None:
+                        c.print(f"{'These files were' if len(request.files) > 1 else 'File'} saved in your output directory")
+                    else:
+                        c.print(f"Output is disabled. {'Files were' if len(request.files) > 1 else 'File'} not saved")
             self.mutex.release()
+            # Handle Logging
+            if self.config.output != None:
+                self.log.createEntry(request, reqString)
             return r
         return app
 
@@ -446,6 +465,7 @@ def parseUpArgs(interfaces: Interfaces) -> argparse.Namespace:
     parser.add_argument("-i", "--ip", help="The IP to serve on. Defaults to all interfaces (0.0.0.0)", default="0.0.0.0", type=lambda addr: validAddress(interfaces, addr))
     parser.add_argument("-m", "--msg", help="Message to respond to non-GET requests with. Defaults to ''.", default="")
     parser.add_argument("--proxies", help="Number of proxies in front of the tool. Defaults to 0", type=positiveInt, default=0)
+    parser.add_argument("-o","--output", help="Directory to output request data to. Disabled by default")
 
     dirGrp = parser.add_mutually_exclusive_group() # Directory arguments
     dirGrp.add_argument("-d", "--directory", help="Directory to serve files from. Defaults to current working directory", default=os.getcwd())

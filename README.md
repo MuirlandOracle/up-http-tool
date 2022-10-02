@@ -10,32 +10,40 @@ This tool has a couple of advantages over the simple version:
 
 Help Menu:
 ```
-usage: up [-h] [-v] [-q] [-p PORT] [-i IP] [-m MSG] [--proxies PROXIES] [-d DIRECTORY | --no-serve]
-          [--accessible | -c] [-ec]
+usage: up [-h] [-v] [-q] [-p PORT] [-i IP] [-m MSG] [--proxies PROXIES]
+          [-o OUTPUT] [-d DIRECTORY | --no-serve] [--accessible | -c] [-ec]
 
 UP Simple HTTP server for debugging / hacking
 
 options:
   -h, --help            show this help message and exit
-  -v, --verbose         Show request headers / information (you probably want this active)
+  -v, --verbose         Show request headers / information (you probably want
+                        this active)
   -q, --quiet           Don't show information on startup
   -p PORT, --port PORT  The port to serve on. Defaults to port 80
-  -i IP, --ip IP        The IP to serve on. Defaults to all interfaces (0.0.0.0)
-  -m MSG, --msg MSG     Message to respond to non-GET requests with. Defaults to ''.
+  -i IP, --ip IP        The IP to serve on. Defaults to all interfaces
+                        (0.0.0.0)
+  -m MSG, --msg MSG     Message to respond to non-GET requests with. Defaults
+                        to ''.
   --proxies PROXIES     Number of proxies in front of the tool. Defaults to 0
+  -o OUTPUT, --output OUTPUT
+                        Directory to output request data to. Disabled by
+                        default
   -d DIRECTORY, --directory DIRECTORY
-                        Directory to serve files from. Defaults to current working directory
+                        Directory to serve files from. Defaults to current
+                        working directory
   --no-serve            Do not serve files
   --accessible          Disable ASCII art (automatically adds --no-colour)
   -c, --no-colour       Disable colour printing
-  -ec, --enable-cors    Add headers to enable CORS (relax browser same-origin policy requirements)
+  -ec, --enable-cors    Add headers to enable CORS (relax browser same-origin
+                        policy requirements)
 ```
 
 ## Installation Instructions
 
 ### Venv Installation
 
-Literally just a Python script. Do something like this to install dependencies and add the script to your PATH:
+Literally just a (single file... for now... it's driving me bonkers) Python script. Do something like this to install dependencies and add the script to your PATH:
 ```bash
 git clone https://github.com/MuirlandOracle/up-http-tool up && cd up
 python3 -m venv env
