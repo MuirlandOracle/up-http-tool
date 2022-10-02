@@ -6,6 +6,7 @@
 import argparse
 import os
 import json
+import re
 import sys
 import waitress
 import random
@@ -79,7 +80,8 @@ class Interfaces():
             return self.interfaces
         else:
             return {self.addresses[self.workingIP]: [self.workingIP]}
-    
+
+
 
 ##### Helper Functions #####
 def renderTable(title: str, cols: list, arr: list):
@@ -103,6 +105,129 @@ def getBody():
     return data
 
 
+
+##### Output Files #####
+class LogRequests():
+    """LogRequests Class
+    Used to output all data to files on disk
+    
+    Attributes:
+    - outDir
+        - Directory to write the files to
+    - config
+        - ServerConfig object -- should be passed in from a calling UpServer object
+
+    """
+    def __init__(self:object, config):
+        """Initialise LogRequests Object
+
+        Takes three arguments:
+        - outDir: string
+            - Root Directory to write output to. Must be located somewhere you have permission to write to.
+            - Default: "./up-output"
+
+        """
+        self.config = config # TODO: Add config checks after splitting classes out
+        self.initialised = False # Store whether the root dir has been created
+
+
+    def createRootDir(self: object) -> None:
+        """Attempt to create the root directory for output
+        Fails with PermissionError if you can't write to that directory, or a FileExistsError if the outDir exists and is not a directory
+
+        """
+        if self.config.logDir == None:
+            raise Exception("No logDir set in config")
+
+        try:
+            os.mkdir(self.config.logDir)
+        except FileExistsError:
+            if not os.path.isdir(self.config.logDir):
+                raise FileExistsError(f"{self.config.logDir} exists and is not a directory")
+            elif not os.access(self.config.logDir, os.W_OK):
+                raise PermissionError(f"{self.config.logDir} exists and is not writeable")
+        except PermissionError:
+            raise PermissionError(f"You don't have permission to write to {self.config.logDir}")
+
+        self.initialised = True
+
+    def createEntry(self: object, r: request, reqString: str) -> bool:
+        """Log an entry into the logging directory
+        Takes a Flask Request object and the request string as parameters -- everything else is via config
+
+        """
+        if not self.initialised:
+            return False
+        
+
+        dirName = reqString.replace("/", "_").\
+                            replace("[","").\
+                            replace("]","").\
+                            replace(" ","-").\
+                            replace("--","-").\
+                            replace('"', "").rstrip("-")
+        sanitisationRegex = re.compile("[^A-Za-z0-9]")
+        dirPath = f"{self.config.logDir}/{dirName}"
+        os.mkdir(dirPath) # If this fails then it's because you've done something dumb with the logging directory
+
+        
+        with open(f"{dirPath}/headers.txt", "w") as f:
+            c = Console(file=f)
+            if not self.config.accessible:
+                c.print(renderTable("", ["Header", "Value"], request.headers))
+            else:
+                for i in request.headers:
+                    c.print(f"{i[0]}: {i[1]}")
+
+
+        # Handle Data
+        data = getBody()
+        if type(data) == dict:
+            with open(f"{dirPath}/body.json", "w") as f:
+                json.dumps(data, indent=4)
+        elif len(data) > 0:
+            with open(f"{dirPath}/body.txt", "w") as f:
+                c = Console(file=f)
+                if not self.config.accessible:
+                    c.print(renderTable("", ["Key", "Value"], data))
+                else:
+                    for i in data:
+                        c.print(f"{i[0]}: {i[1]}")
+
+            for i in data:
+                if len(i[1]) > 50: # If the length is greater than 50, write it to the disk separately for easy access
+                    with open(f"{dirPath}/body-param-{re.sub(sanitisationRegex,'',i[0])}.txt", "w") as f:
+                        f.write(i[1])
+
+
+        # Handle query parameters
+        args = tuple([(i,v) for i,v in request.args.items()])
+        if len(args) > 0:
+            with open(f"{dirPath}/query-params.txt", "w") as f:
+                c = Console(file=f)
+                if not self.config.accessible:
+                    c.print(renderTable("", ["Key", "Value"], args))
+                else:
+                    for i in args:
+                        c.print(f"{i[0]}: {i[1]}")
+
+            for i in args:
+                if len(i[1]) > 50:
+                    with open(f"{dirPath}/query-param-{re.sub(sanitisationRegex,'',i[0])}.txt", "w") as f:
+                        f.write(i[1])
+
+        # Handle Files
+        if len(request.files) > 0:
+            filesDirPath = f"{dirPath}/uploadedFiles"
+            os.mkdir(filesDirPath)
+            for i in request.files:
+                uf = request.files.get(i)
+                uf.save(f"{filesDirPath}/{uf.filename}")
+        return True
+
+
+
+
 ##### HTTP Server #####
 class ServerConfig():
     """ServerConfig Class
@@ -118,6 +243,7 @@ class ServerConfig():
         self.port = 80
         self.msg = ""
         self.directory = os.getcwd()
+        self.logDir = None
         self.no_serve = False
         self.accessible = False
         self.no_colour = False
@@ -229,7 +355,8 @@ class UpServer():
             self.mutex.acquire()
             # Shoutout @Sam1ser for this one -- https://github.com/Samiser/pfp-colour-changer/blob/main/main.py
             c = Console(style=f"rgb({','.join(str(round(i*255)) for i in colorsys.hsv_to_rgb(random.random(), 0.3, 0.95))})" if not self.config.no_colour else "", highlight=False)
-            c.print(f"""{"=============================================" + chr(10) if self.config.verbose and not self.config.accessible else ""}{request.remote_addr} - - [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "{request.method} {request.full_path.rstrip('?')} {request.environ.get('SERVER_PROTOCOL')}" {r.status_code} -""")
+            reqString = f"""{request.remote_addr} - - [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "{request.method} {request.full_path.rstrip('?')} {request.environ.get('SERVER_PROTOCOL')}" {r.status_code} -"""
+            c.print(f"""{"=============================================" + chr(10) if self.config.verbose and not self.config.accessible else ""}{reqString}""")
             if self.config.verbose:
                 if not self.config.accessible:
                     c.print(renderTable("", ["Header", "Value"], request.headers))
