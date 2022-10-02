@@ -11,7 +11,8 @@ This tool has a couple of advantages over the simple version:
 Help Menu:
 ```
 usage: up [-h] [-v] [-q] [-p PORT] [-i IP] [-m MSG] [--proxies PROXIES]
-          [-o OUTPUT] [-d DIRECTORY | --no-serve] [--accessible | -c] [-ec]
+          [-o OUTPUT] [--ignore IGNORE] [-d DIRECTORY | --no-serve]
+          [--accessible | -c] [-ec]
 
 UP Simple HTTP server for debugging / hacking
 
@@ -29,6 +30,9 @@ options:
   -o OUTPUT, --output OUTPUT
                         Directory to output request data to. Disabled by
                         default
+  --ignore IGNORE       Query parameter which tells UP to ignore verbosity and
+                        logging for the request. Defaults to 'ignore' (e.g.
+                        `/file?ignore`).
   -d DIRECTORY, --directory DIRECTORY
                         Directory to serve files from. Defaults to current
                         working directory

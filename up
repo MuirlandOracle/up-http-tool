@@ -245,6 +245,7 @@ class ServerConfig():
         self.msg = ""
         self.directory = os.getcwd()
         self.output = None
+        self.ignore = "ignore"
         self.no_serve = False
         self.accessible = False
         self.no_colour = False
@@ -308,6 +309,7 @@ class UpServer():
 
         """
         headerstyle = "\n[bold underline]{}[/bold underline]"
+        self.mutex.acquire()
         c = Console(highlight=False)
         if not (self.config.accessible or quiet):
             c.rule("Information")
@@ -323,6 +325,7 @@ class UpServer():
         c.print()
         if not (self.config.accessible or quiet):
             c.rule()
+        self.mutex.release()
 
 
 
@@ -364,8 +367,8 @@ class UpServer():
             # Shoutout @Sam1ser for this one -- https://github.com/Samiser/pfp-colour-changer/blob/main/main.py
             c = Console(style=f"rgb({','.join(str(round(i*255)) for i in colorsys.hsv_to_rgb(random.random(), 0.3, 0.95))})" if not self.config.no_colour else "", highlight=False)
             reqString = f"""{request.remote_addr} - - [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "{request.method} {request.full_path.rstrip('?')} {request.environ.get('SERVER_PROTOCOL')}" {r.status_code} -"""
-            c.print(f"""{"=============================================" + chr(10) if self.config.verbose and not self.config.accessible else ""}{reqString}""")
-            if self.config.verbose:
+            c.print(f"""{"=============================================" + chr(10) if self.config.verbose and not (self.config.accessible or self.config.ignore) else ""}{reqString}""")
+            if self.config.verbose and self.config.ignore not in request.args:
                 if not self.config.accessible:
                     c.print(renderTable("", ["Header", "Value"], request.headers))
                 else:
@@ -405,7 +408,7 @@ class UpServer():
                         c.print(f"Output is disabled. {'Files were' if len(request.files) > 1 else 'File'} not saved")
             self.mutex.release()
             # Handle Logging
-            if self.config.output != None:
+            if self.config.output != None and self.config.ignore not in request.args:
                 self.log.createEntry(request, reqString)
             return r
         return app
@@ -466,6 +469,7 @@ def parseUpArgs(interfaces: Interfaces) -> argparse.Namespace:
     parser.add_argument("-m", "--msg", help="Message to respond to non-GET requests with. Defaults to ''.", default="")
     parser.add_argument("--proxies", help="Number of proxies in front of the tool. Defaults to 0", type=positiveInt, default=0)
     parser.add_argument("-o","--output", help="Directory to output request data to. Disabled by default")
+    parser.add_argument("--ignore", help="Query parameter which tells UP to ignore verbosity and logging for the request. Defaults to 'ignore' (e.g. `/file?ignore`).")
 
     dirGrp = parser.add_mutually_exclusive_group() # Directory arguments
     dirGrp.add_argument("-d", "--directory", help="Directory to serve files from. Defaults to current working directory", default=os.getcwd())
