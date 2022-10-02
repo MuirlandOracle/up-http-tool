@@ -1,6 +1,6 @@
 # UP HTTP Server
 
-*Really* simple wrapper around Flask / Waitress, dropping in as a replacement for the classic "python3 -m http.server". Useful for security testing ¯\\_(ツ)_/¯
+Wrapper around Flask / Waitress, dropping in as a replacement for the classic "python3 -m http.server". Useful for security testing ¯\\_(ツ)_/¯. This was originally written to assist with WEB-300 (OSWE) coursework, so you may find it useful if you're attempting that... 
 
 This tool has a couple of advantages over the simple version:
 * Optionally show request headers -- useful for debugging or if you're looking for connections back from a target webserver
@@ -55,5 +55,6 @@ pip install -r requirements.txt
 cp up /usr/bin
 ./up
 ```
+---
 
 Note, this has been tested on Kali Linux... and that is it. I developed this to make life easier when testing webapps / applications that might callback over HTTP -- you are more than welcome to make use of it yourself, but please don't expect full product support!
