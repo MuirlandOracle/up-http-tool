@@ -7,17 +7,17 @@ import argparse
 import os
 import json
 import re
-import waitress
 import random
 import netifaces
 import colorsys
 import threading
+import logging
 from rich.console import Console
 from rich.columns import Columns
 from rich.table import Table
 from datetime import datetime
 from werkzeug.middleware.proxy_fix import ProxyFix
-from flask import Flask, send_from_directory, request
+from flask import Flask, send_from_directory, request, cli
 
 
 
@@ -261,6 +261,7 @@ class ServerConfig():
     def __init__(self, **kwargs):
         self.verbose = True
         self.port = 80
+        self.ssl_context = None
         self.msg = ""
         self.directory = os.getcwd()
         self.output = None
@@ -274,6 +275,13 @@ class ServerConfig():
         for i in kwargs.items():
             if hasattr(self, i[0]):
                 setattr(self, i[0], i[1])
+
+        # Check ssl related args and set ssl context
+        if kwargs.get("https"):
+            if kwargs.get("cert") and kwargs.get("key"):
+                self.ssl_context = (kwargs.get("cert"), kwargs.get("key"))
+            else:
+                self.ssl_context = "adhoc"
 
 
         # Accessible means that colour should be disabled as well
@@ -446,9 +454,17 @@ class UpServer():
             
         if not quiet:
             self.printInfo(quiet=True)
-            print(f"Serving on http://{self.interfaces.workingIP}:{self.config.port}")
+            if not self.config.ssl_context:
+                proto = "http"
+            else:
+                proto = "https"
+            print(f"Serving on {proto}://{self.interfaces.workingIP}:{self.config.port}")
 
-        threading.Thread(target=lambda: waitress.serve(workingApp, port=self.config.port, host=self.interfaces.workingIP), daemon=True).start() # Run the HTTP server in the background so that the enter-for-info works
+        # Disable flask logging
+        logging.getLogger('werkzeug').disabled = True
+        cli.show_server_banner = lambda *args: None
+
+        threading.Thread(target=lambda: workingApp.run(port=self.config.port, host=self.interfaces.workingIP, ssl_context=self.config.ssl_context), daemon=True).start() # Run the HTTP server in the background so that the enter-for-info works
         while True:
             try:
                 input()
@@ -487,6 +503,9 @@ def parseUpArgs(interfaces: Interfaces) -> argparse.Namespace:
     parser.add_argument("-q", "--quiet", help="Don't show information on startup", action="store_true")
     parser.add_argument("-p", "--port", help="The port to serve on. Defaults to port 80", default=80)
     parser.add_argument("-i", "--ip", help="The IP to serve on. Defaults to all interfaces (0.0.0.0)", default="0.0.0.0", type=lambda addr: validAddress(interfaces, addr))
+    parser.add_argument("--https", help="Run HTTPS server.", action=argparse.BooleanOptionalAction)
+    parser.add_argument("--cert", help="Path to the certificate file.", default=None)
+    parser.add_argument("--key", help="Path to the key file.", default=None)
     parser.add_argument("-m", "--msg", help="Message to respond to non-GET requests with. Defaults to ''.", default="")
     parser.add_argument("--proxies", help="Number of proxies in front of the tool. Defaults to 0", type=positiveInt, default=0)
     parser.add_argument("-o","--output", help="Directory to output request data to. Disabled by default")
