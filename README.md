@@ -10,7 +10,8 @@ This tool has a couple of advantages over the simple version:
 
 Help Menu:
 ```
-usage: up [-h] [-v] [-q] [-p PORT] [-i IP] [-m MSG] [--proxies PROXIES]
+usage: up [-h] [-v] [-q] [-p PORT] [-i IP] [--https | --no-https] 
+          [--cert CERT] [--key KEY] [-m MSG] [--proxies PROXIES]
           [-o OUTPUT] [--ignore IGNORE] [-d DIRECTORY | --no-serve]
           [--accessible | -c] [-ec]
 
@@ -24,6 +25,9 @@ options:
   -p PORT, --port PORT  The port to serve on. Defaults to port 80
   -i IP, --ip IP        The IP to serve on. Defaults to all interfaces
                         (0.0.0.0)
+  --https, --no-https   Run HTTPS server.
+  --cert CERT           Path to the certificate file.
+  --key KEY             Path to the key file.
   -m MSG, --msg MSG     Message to respond to non-GET requests with. Defaults
                         to ''.
   --proxies PROXIES     Number of proxies in front of the tool. Defaults to 0
