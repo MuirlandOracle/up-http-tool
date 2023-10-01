@@ -273,7 +273,7 @@ class ServerConfig():
         self.enable_cors = False
 
         for i in kwargs.items():
-            if hasattr(self, i[0]):
+            if hasattr(self, i[0]) and i[1] != None:
                 setattr(self, i[0], i[1])
 
         # Check ssl related args and set ssl context
@@ -282,6 +282,8 @@ class ServerConfig():
                 self.ssl_context = (kwargs.get("cert"), kwargs.get("key"))
             else:
                 self.ssl_context = "adhoc"
+            if not kwargs.get("port"):
+                self.port = 443 # Default to port 443 if we're using HTTPS
 
 
         # Accessible means that colour should be disabled as well
@@ -501,7 +503,7 @@ def parseUpArgs(interfaces: Interfaces) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="UP Simple HTTP server for debugging / hacking")
     parser.add_argument("-v", "--verbose", help="Show request headers / information (you probably want this active)", action="store_true")
     parser.add_argument("-q", "--quiet", help="Don't show information on startup", action="store_true")
-    parser.add_argument("-p", "--port", help="The port to serve on. Defaults to port 80", default=80)
+    parser.add_argument("-p", "--port", help="The port to serve on. Defaults to port 80 if HTTP, else 443")
     parser.add_argument("-i", "--ip", help="The IP to serve on. Defaults to all interfaces (0.0.0.0)", default="0.0.0.0", type=lambda addr: validAddress(interfaces, addr))
     parser.add_argument("--https", help="Run HTTPS server.", action=argparse.BooleanOptionalAction)
     parser.add_argument("--cert", help="Path to the certificate file.", default=None)
