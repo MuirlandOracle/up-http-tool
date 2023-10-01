@@ -272,9 +272,9 @@ class ServerConfig():
         self.proxies = 0
         self.enable_cors = False
 
-        for i in kwargs.items():
-            if hasattr(self, i[0]) and i[1] != None:
-                setattr(self, i[0], i[1])
+        for key, value in kwargs.items():
+            if key in self.__dict__ and value != None:
+                setattr(self, key, value)
 
         # Check ssl related args and set ssl context
         if kwargs.get("https"):
