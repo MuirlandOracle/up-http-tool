@@ -179,14 +179,14 @@ class LogRequests():
             return False
         
 
-        dirName = re.sub("(?:\?[^ ]+ )", " ", reqString) # Remove query strings
+        dirName = re.sub(r"(?:\?[^ ]+ )", " ", reqString) # Remove query strings
         dirName = dirName.replace("/", "_").\
                             replace("[","").\
                             replace("]","").\
                             replace(" ","-").\
                             replace("--","-").\
                             replace('"', "").rstrip("-")
-        sanitisationRegex = re.compile("[^A-Za-z0-9]")
+        sanitisationRegex = re.compile(r"[^A-Za-z0-9]")
         dirPath = f"{self.config.output}/{dirName}"
         os.mkdir(dirPath) # If this fails then it's because you've done something dumb with the logging directory
 
